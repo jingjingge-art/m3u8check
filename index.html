@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>IPTV 直播源检测工具【修复版】</title>
+<style>
+:root{
+  --bg:#f4f4f6;--panel:#fff;--line:rgba(0,0,0,.09);--line2:rgba(0,0,0,.14);
+  --txt:rgba(0,0,0,.87);--dim:rgba(0,0,0,.52);--faint:rgba(0,0,0,.36);
+  --fill:rgba(0,0,0,.038);--fill2:rgba(0,0,0,.07);
+  --pri:#e58522;--ok:#2f9e44;--bad:#d94f45;--warn:#b07d10;
+  --okbg:rgba(47,158,68,.12);--badbg:rgba(217,79,69,.12);--warnbg:rgba(176,125,16,.14);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#1c1c1d;--panel:#282829;--line:rgba(255,255,255,.1);--line2:rgba(255,255,255,.16);
+    --txt:rgba(255,255,255,.87);--dim:rgba(255,255,255,.52);--faint:rgba(255,255,255,.34);
+    --fill:rgba(255,255,255,.05);--fill2:rgba(255,255,255,.09);
+    --pri:#f3a04c;--ok:#4ec36a;--bad:#ef6f66;--warn:#e0b34a;
+    --okbg:rgba(78,195,106,.16);--badbg:rgba(239,111,102,.16);--warnbg:rgba(224,179,74,.16)}
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--txt);
+  font:14px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-text-size-adjust:100%;padding:20px 14px 40px}
+.wrap{max-width:860px;margin:0 auto}
+header{margin-bottom:14px}
+h1{font-size:19px;line-height:1.3;margin:0 0 4px;font-weight:600;letter-spacing:.2px}
+.sub{margin:0;color:var(--dim);font-size:12.5px}
+.card{background:var(--panel);border:.5px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:13px;margin:0 0 10px;font-weight:600;color:var(--dim);letter-spacing:.6px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-height:104px;border:1px dashed var(--line2);border-radius:12px;background:var(--fill);
+  text-align:center;cursor:pointer;padding:16px;transition:background .15s,border-color .15s,transform .1s}
+.drop:hover{border-color:var(--pri)}
+.drop.hover{border-color:var(--pri);background:rgba(229,133,34,.09)}
+.drop b{font-size:13.5px;font-weight:500}
+.drop span{font-size:12px;color:var(--dim)}
+details.paste{margin-top:10px}
+details.paste summary{font-size:12.5px;color:var(--dim);cursor:pointer;padding:3px 0;user-select:none}
+textarea{width:100%;margin-top:8px;border-radius:10px;resize:vertical;min-height:104px;
+  font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+input,select,textarea{color:var(--txt);background:var(--fill);border:.5px solid var(--line2);
+  border-radius:10px;padding:8px 10px;outline:none;font-family:inherit;font-size:13px;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--pri);background:var(--fill2)}
+.row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.row:last-child{margin-bottom:0}
+.row>label{font-size:12.5px;color:var(--dim);width:86px;flex:none}
+.row>input,.row>select{flex:1;min-width:0;height:34px;padding:0 10px}
+.hint{font-size:11px;color:var(--faint);flex:none;width:104px;text-align:right}
+.chk{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;color:var(--dim);cursor:pointer;padding:2px 0}
+.chk input{width:15px;height:15px;flex:none;margin:2px 0 0;padding:0;accent-color:var(--pri)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.btn{height:36px;padding:0 15px;border-radius:10px;border:.5px solid var(--line2);
+  background:var(--fill);color:var(--txt);font-size:12.5px;font-weight:500;
+  transition:background .15s,filter .15s,opacity .15s;white-space:nowrap}
+.btn:hover:not(:disabled){background:var(--fill2)}
+.btn.primary{border:0;background:var(--pri);color:#fff}
+.btn.primary:hover:not(:disabled){filter:brightness(1.07)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.bar{height:5px;border-radius:99px;background:var(--fill2);overflow:hidden;margin-top:12px}
+.bar>i{display:block;height:100%;width:0;background:var(--pri);transition:width .18s ease-out}
+.runline{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:12px;color:var(--dim)}
+.runline span{margin-left:auto;color:var(--faint);font-variant-numeric:tabular-nums}
+.nums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+@media(max-width:520px){.nums{grid-template-columns:repeat(2,minmax(0,1fr))}.hint{display:none}
+  .row>label{width:72px}}
+.num{background:var(--fill);border-radius:10px;padding:8px 10px;min-width:0}
+.num b{display:block;font-size:18px;font-weight:600;line-height:1.3;font-variant-numeric:tabular-nums}
+.num small{font-size:11px;color:var(--dim)}
+.n-ok b{color:var(--ok)}.n-bad b{color:var(--bad)}.n-skip b{color:var(--warn)}
+.tools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.chip{height:30px;padding:0 12px;border-radius:99px;border:.5px solid var(--line2);
+  background:transparent;color:var(--dim);font-size:12px;transition:background .15s,color .15s,border-color .15s}
+.chip:hover{background:var(--fill)}
+.chip.on{background:rgba(229,133,34,.15);border-color:rgba(229,133,34,.4);color:var(--pri);font-weight:500}
+#search{height:34px;margin-bottom:10px}
+.grp{border:.5px solid var(--line);border-radius:10px;margin-bottom:8px;overflow:hidden;background:var(--panel)}
+.grp>summary{display:flex;align-items:center;gap:8px;padding:9px 11px;background:var(--fill);
+  font-size:13px;font-weight:500;cursor:pointer;list-style:none;user-select:none}
+.grp>summary::-webkit-details-marker{display:none}
+.grp>summary::before{content:"\25B8";font-size:9px;color:var(--faint);transition:transform .15s}
+.grp[open]>summary::before{transform:rotate(90deg)}
+.grp>summary em{margin-left:auto;font-style:normal;font-size:11.5px;color:var(--dim);font-weight:400;
+  font-variant-numeric:tabular-nums}
+.item{display:flex;gap:8px;align-items:flex-start;padding:7px 11px;border-top:.5px solid var(--line)}
+.item:hover{background:var(--fill)}
+.dot{width:6px;height:6px;border-radius:99px;margin-top:7px;flex:none;background:var(--faint)}
+.d-ok{background:var(--ok)}.d-bad{background:var(--bad)}.d-skip{background:var(--warn)}
+.d-testing{background:var(--pri);animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.28}}
+.it-main{min-width:0;flex:1}
+.it-name{font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.it-url{font-size:11px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.it-note{font-size:11px;color:var(--dim)}
+.it-ms{font-size:11px;color:var(--dim);flex:none;margin-top:2px;font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.empty{padding:24px 8px;text-align:center;color:var(--dim);font-size:12.5px;line-height:1.8}
+.note{font-size:11.5px;color:var(--faint);margin:10px 0 0;line-height:1.75}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;
+  background:var(--fill2);border-radius:4px;padding:1px 4px}
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,8px);opacity:0;
+  background:rgba(18,18,18,.92);color:#fff;font-size:12px;padding:8px 16px;border-radius:99px;
+  transition:opacity .2s,transform .2s;pointer-events:none;z-index:99;
+  box-shadow:0 8px 22px rgba(0,0,0,.28);max-width:80vw;text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>IPTV 直播源检测工具【修复版】</h1>
+    <p class="sub">上传 TXT/M3U 列表 → 并发探测 → 分有效 / 无效 → 汇总导出，全部在浏览器本地完成</p>
+  </header>
+  <section class="card">
+    <h2>1 · 导入列表</h2>
+    <label class="drop" id="drop">
+      <input type="file" id="file" accept=".txt,.m3u,.m3u8,text/plain" hidden>
+      <b>点击选择文件</b>
+      <span>或把 .txt / .m3u8 拖到这里</span>
+    </label>
+    <details class="paste">
+      <summary>或直接粘贴文本内容</summary>
+      <textarea id="pasteBox" spellcheck="false" placeholder="🐯央视,#genre#&#10;CCTV-1综合,http://xxx/index.m3u8&#10;#EXTINF:-1 group-title=\"央视\",CCTV2&#10;http://xxx"></textarea>
+      <div class="actions">
+        <button class="btn" id="btnPaste">解析粘贴内容</button>
+        <button class="btn ghost" id="btnDemo">载入示例</button>
+      </div>
+    </details>
+    <div class="empty" id="parseInfo" hidden></div>
+  </section>
+  <section class="card" id="cfg" hidden>
+    <h2>2 · 检测参数</h2>
+    <div class="row">
+      <label>并发数</label>
+      <input id="conc" type="number" min="1" max="32" step="1" value="10">
+      <span class="hint">同时检测 10 条</span>
+    </div>
+    <div class="row">
+      <label>超时</label>
+      <input id="timeout" type="number" min="1000" max="30000" step="500" value="5000">
+      <span class="hint">毫秒（5 秒）</span>
+    </div>
+    <label class="chk"><input type="checkbox" id="optFix" checked>
+      <span>自动修复缺失逗号等明显格式错误（如 <code>频道名http://…</code>）</span></label>
+    <label class="chk"><input type="checkbox" id="optDedupe" checked>
+      <span>汇总时同组同名只保留一条（优先可用、延迟最低）</span></label>
+    <div class="actions">
+      <button class="btn primary" id="btnRun">开始检测</button>
+      <button class="btn" id="btnStop" disabled>停止</button>
+      <button class="btn ghost" id="btnReset">清空结果</button>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+    <div class="runline">
+      <span style="margin-left:0" id="runLabel">待检测</span>
+      <span id="runStat"></span>
+    </div>
+    <div class="nums">
+      <div class="num"><b id="nTotal">0</b><small>总线路</small></div>
+      <div class="num n-ok"><b id="nOk">0</b><small>有效</small></div>
+      <div class="num n-bad"><b id="nBad">0</b><small>无效</small></div>
+      <div class="num n-skip"><b id="nSkip">0</b><small>无法检测</small></div>
+    </div>
+  </section>
+  <section class="card" id="list" hidden>
+    <h2>3 · 检测结果</h2>
+    <div class="tools">
+      <button class="chip on" data-filter="all">全部 <span data-c="all"></span></button>
+      <button class="chip" data-filter="ok">有效 <span data-c="ok"></span></button>
+      <button class="chip" data-filter="bad">无效 <span data-c="bad"></span></button>
+      <button class="chip" data-filter="skip">无法检测 <span data-c="skip"></span></button>
+    </div>
+    <input id="search" type="search" placeholder="搜索频道名或地址…">
+    <div id="groups"></div>
+    <div class="actions">
+      <button class="btn primary" id="btnTxt">下载有效源 TXT</button>
+      <button class="btn" id="btnM3u">下载 M3U</button>
+      <button class="btn" id="btnReport">下载检测报告 TXT</button>
+      <button class="btn ghost" id="btnCopy">复制有效源</button>
+    </div>
+    <p class="note">
+      浏览器探测的局限：受同源策略限制，多数直播源不允许跨域读取，此时只要域名、端口和 HTTP 响应可达即判定为“有效（可达）”，
+      无法校验内容是否真的能播放。标注 <code>已校验 m3u8</code> 的条目是成功读到 <code>#EXTM3U</code> 内容的强校验结果。
+      <code>rtmp://</code>、<code>udp://</code>、<code>mitv://</code>、<code>P2p://</code> 等协议无法在网页中探测，归入“无法检测”，可在导出时选择是否保留。
+    </p>
+  </section>
+</div>
+<div id="toast"></div>
+<script>
+(function(){
+"use strict";
+var SCHEME = "(?:https?|rtmps?|rtsp|rtp|udp|mitv|p2p)";
+// 同时兼容英文逗号、全角逗号
+var reEntryComma = new RegExp("^(.+?)[,，]\\s*(" + SCHEME + "://.*)$", "i");
+var reEntryNoComma = new RegExp("^(.+?)\\s+?(" + SCHEME + "://.*)$", "i");
+var reEntryGlued = new RegExp("^(.+?)(" + SCHEME + "://.*)$", "i");
+var reSplitHash = /#(?=(?:https?|rtmps?):\/\/)/i;
+// 匹配EXTINF行，提取group-title和频道名称
+var reExtinf = /#EXTINF:[^\,]+\,([^\r\n]+)/i;
+var reGroupTitle = /group-title\s*=\s*["']([^"']+)["']/i;
+
+var state = {
+  entries: [],
+  running: false,
+  filter: "all",
+  q: "",
+  rows: {},
+  aborts: []
+};
+var $ = function(id){ return document.getElementById(id); };
+var fileEl = $("file"), dropEl = $("drop"), pasteBox = $("pasteBox");
+var cfg = $("cfg"), listCard = $("list"), parseInfo = $("parseInfo");
+var groupsEl = $("groups");
+
+function toast(msg){
+  var t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function(){ t.classList.remove("show"); }, 2200);
+}
+
+/* ---------------- 解析【修复：支持标准M3U #EXTINF】 ---------------- */
+function splitEntry(line, optFix){
+  var m = line.match(reEntryComma);
+  var name, url;
+  if(m){
+    name = m[1]; url = m[2];
+  } else {
+    m = line.match(reEntryGlued);
+    if(m && optFix){
+      name = m[1]; url = m[2];
+    } else {
+      return { name: line, urls: [], note: "缺少播放地址" };
+    }
+  }
+  name = name.replace(/[,，\s]+$/, "").trim();
+  url = url.trim();
+  var urls = url.split(reSplitHash).map(function(s){
+    return s.replace(/^#+/, "").trim();
+  }).filter(Boolean);
+  if(!urls.length) return { name: name || line, urls: [], note: "缺少播放地址" };
+  return { name: name || "未命名", urls: urls, note: "" };
+}
+
+function parseText(text, optFix){
+  var lines = text.split(/\r?\n/);
+  var group = "未分组";
+  var out = [];
+  var noAddr = 0;
+  // 针对M3U临时缓存EXTINF信息
+  let pendingExtinfName = null;
+  let pendingExtinfGroup = null;
+
+  for(var i = 0; i < lines.length; i++){
+    var line = lines[i].replace(/^\uFEFF/, "").trim();
+    if(!line) continue;
+
+    // #genre# 分组标记（txt格式分组）
+    if(/#genre#\s*$/i.test(line)){
+      var g = line.replace(/#genre#\s*$/i, "").replace(/[,，\s]+$/, "").trim();
+      group = g || "未分组";
+      pendingExtinfName=null; pendingExtinfGroup=null;
+      continue;
+    }
+
+    // M3U EXTINF 行，缓存名称+分组，下一行是url
+    if(line.startsWith("#EXTINF")){
+      pendingExtinfName = null;
+      pendingExtinfGroup = null;
+      let gm = line.match(reGroupTitle);
+      let nm = line.match(reExtinf);
+      if(gm) pendingExtinfGroup = gm[1].trim();
+      if(nm) pendingExtinfName = nm[1].trim();
+      continue;
+    }
+    // 跳过其他注释，不丢弃缓存的extinf
+    if(line.charAt(0) === "#") continue;
+
+    // 如果上一行是#EXTINF，则当前行是URL
+    if(pendingExtinfName){
+      let url = line.trim();
+      if(/^https?:\/\//i.test(url)){
+        let useGroup = pendingExtinfGroup ? pendingExtinfGroup : group;
+        out.push({
+          id: "e" + out.length + "_" + Math.random().toString(36).slice(2,7),
+          group: useGroup,
+          name: pendingExtinfName,
+          urls:[url],
+          status:"pending",
+          level:"",
+          ms:0,
+          note:"[M3U导入]",
+          line:i+1
+        });
+      }
+      pendingExtinfName=null; pendingExtinfGroup=null;
+      continue;
+    }
+
+    // 普通逗号格式txt解析
+    var p = splitEntry(line, optFix);
+    if(!p.urls.length) noAddr++;
+    out.push({
+      id: "e" + out.length + "_" + Math.random().toString(36).slice(2, 7),
+      group: group,
+      name: p.name,
+      urls: p.urls,
+      status: p.urls.length ? "pending" : "skip",
+      level: "",
+      ms: 0,
+      note: p.note || (p.urls.length > 1 ? "含 " + p.urls.length + " 个备用地址" : ""),
+      line: i + 1
+    });
+  }
+  return { entries: out, noAddr: noAddr };
+}
+
+function loadText(text, label){
+  if(!text || !text.trim()){ toast("内容为空"); return; }
+  var parsed = parseText(text, $("optFix").checked);
+  if(!parsed.entries.length){ toast("⚠️未识别到任何线路！检查源格式（支持txt逗号格式 / 标准m3u #EXTINF格式）"); return; }
+  state.entries = parsed.entries;
+  state.filter = "all";
+  state.q = "";
+  $("search").value = "";
+  Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(c){
+    c.classList.toggle("on", c.dataset.filter === "all");
+  });
+  cfg.hidden = false;
+  listCard.hidden = false;
+  var gcount = Object.keys(groupBy(parsed.entries)).length;
+  parseInfo.hidden = false;
+  parseInfo.innerHTML = "已解析 <b>" + parsed.entries.length + "</b> 条线路，共 <b>" + gcount + "</b> 个分组" +
+    (parsed.noAddr ? "；其中 " + parsed.noAddr + " 条缺少播放地址（已标记为无法检测）" : "") +
+    (label ? "　来源：" + escapeHtml(label) : "");
+  publishOrder();
+  render();
+  updateStats();
+  $("runLabel").textContent = "待检测";
+  $("runStat").textContent = "";
+  $("barFill").style.width = "0%";
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c];
+  });
+}
+
+/* ---------------- 探测逻辑（不变） ---------------- */
+function probe(entry, timeout){
+  var url = entry.urls[0] || "";
+  var scheme = (url.split(":")[0] || "").toLowerCase();
+  if(!url) return Promise.resolve({ status: "skip", note: "缺少播放地址", ms: 0, level: "" });
+  if(scheme !== "http" && scheme !== "https"){
+    return Promise.resolve({ status: "skip", note: "非 HTTP 协议，网页无法探测", ms: 0, level: "" });
+  }
+  return new Promise(function(resolve){
+    var ac = new AbortController();
+    var done = false;
+    var t0 = performance.now();
+    var timer = setTimeout(function(){
+      if(done) return;
+      done = true;
+      try{ ac.abort(); }catch(e){}
+      resolve({ status: "bad", note: "超时 " + (timeout / 1000) + "s", ms: timeout, level: "" });
+    }, timeout);
+    state.aborts.push(function(){ try{ ac.abort(); }catch(e){} });
+    function finish(r){
+      if(done) return;
+      done = true;
+      clearTimeout(timer);
+      r.ms = Math.round(performance.now() - t0);
+      resolve(r);
+    }
+    fetch(url, { mode: "cors", cache: "no-store", credentials: "omit", signal: ac.signal })
+      .then(function(res){
+        if(!res.ok) return finish({ status: "bad", note: "HTTP " + res.status, level: "" });
+        return res.text().then(function(txt){
+          if(/#EXTM3U|#EXTINF/i.test(txt.slice(0, 8192))){
+            return finish({ status: "ok", level: "strong", note: "已校验 m3u8" });
+          }
+          return finish({ status: "ok", level: "weak", note: "可访问，未识别到 m3u8 内容" });
+        }).catch(function(){
+          return finish({ status: "ok", level: "weak", note: "可访问（内容读取受限）" });
+        });
+      })
+      .catch(function(err){
+        if(done) return;
+        if(err && err.name === "AbortError") return;
+        return fetch(url, { mode: "no-cors", cache: "no-store", credentials: "omit", signal: ac.signal })
+          .then(function(){ finish({ status: "ok", level: "weak", note: "可达（跨域受限）" }); })
+          .catch(function(e2){
+            if(done) return;
+            if(e2 && e2.name === "AbortError") return;
+            finish({ status: "bad", note: "连接失败", level: "" });
+          });
+      });
+  });
+}
+
+/* ---------------- 运行逻辑 ---------------- */
+function publishOrder(){
+  var order = [];
+  var seen = {};
+  state.entries.forEach(function(e){
+    if(!seen[e.group]){ seen[e.group] = true; order.push(e.group); }
+  });
+  state.groupOrder = order;
+  var counts = {};
+  state.groupOrder.forEach(function(g){
+    counts[g] = { total: 0, ok: 0, bad: 0, skip: 0, pending: 0, testing: 0 };
+  });
+  state.entries.forEach(function(e){
+    var c = counts[e.group];
+    if(!c) return;
+    c.total++;
+    c[e.status] = (c[e.status] || 0) + 1;
+  });
+  state.groupCounts = counts;
+}
+function groupBy(arr){
+  var g = {};
+  arr.forEach(function(e){ (g[e.group] = g[e.group] || []).push(e); });
+  return g;
+}
+function startRun(){
+  if(state.running) return;
+  var targets = state.entries.filter(function(e){ return e.status === "pending" || e.status === "bad" || e.status === "skip" || e.status === "ok"; });
+  if(!targets.length){ toast("没有可检测的线路"); return; }
+  targets.forEach(function(e){
+    if(!e.urls.length){ e.status = "skip"; e.note = "缺少播放地址"; return; }
+    e.status = "pending"; e.ms = 0; e.level = ""; e.note = "";
+  });
+  var conc = Math.max(1, Math.min(32, parseInt($("conc").value, 10) || 10));
+  var timeout = Math.max(1000, Math.min(30000, parseInt($("timeout").value, 10) || 5000));
+  state.aborts = [];
+  state.running = true;
+  $("btnRun").disabled = true;
+  $("btnStop").disabled = false;
+  $("btnReset").disabled = true;
+  var queue = targets.filter(function(e){ return e.urls.length; });
+  var total = queue.length;
+  var idx = 0, finished = 0;
+  var lastPaint = 0;
+  function paint(force){
+    var now = performance.now();
+    if(!force && now - lastPaint < 120) return;
+    lastPaint = now;
+    $("barFill").style.width = (total ? (finished / total) * 100 : 0).toFixed(1) + "%";
+    $("runStat").textContent = finished + " / " + total;
+    updateStats();
+  }
+  function worker(){
+    return new Promise(function(resolve){
+      function next(){
+        if(!state.running) return resolve();
+        if(idx >= queue.length) return resolve();
+        var e = queue[idx++];
+        e.status = "testing";
+        markRow(e);
+        probe(e, timeout).then(function(r){
+          e.status = r.status;
+          e.level = r.level || "";
+          e.ms = r.ms || 0;
+          e.note = r.note || "";
+          if(e.status === "skip" && e.urls.length > 1) e.note = e.note || (e.urls.length + " 个备用地址");
+          finished++;
+          markRow(e);
+          paint(false);
+          next();
+        });
+      }
+      next();
+    });
+  }
+  $("runLabel").textContent = "检测中";
+  publishOrder();
+  var workers = [];
+  for(var i = 0; i < Math.min(conc, Math.max(queue.length, 1)); i++) workers.push(worker());
+  Promise.all(workers).then(function(){
+    state.running = false;
+    state.aborts = [];
+    $("btnRun").disabled = false;
+    $("btnStop").disabled = true;
+    $("btnReset").disabled = false;
+    $("runLabel").textContent = state.running ? "" : "已完成";
+    publishOrder();
+    render();
+    updateStats();
+    paint(true);
+    var ok = state.entries.filter(function(e){ return e.status === "ok"; }).length;
+    toast("检测完成：有效 " + ok + " 条 / 共 " + state.entries.length + " 条");
+  });
+}
+function stopRun(){
+  if(!state.running) return;
+  state.running = false;
+  state.aborts.forEach(function(fn){ fn(); });
+  state.aborts = [];
+  $("btnRun").disabled = false;
+  $("btnStop").disabled = true;
+  $("btnReset").disabled = false;
+  $("runLabel").textContent = "已停止";
+  toast("已停止检测");
+}
+
+/* ---------------- 渲染 ---------------- */
+function updateStats(){
+  var n = { total: state.entries.length, ok: 0, bad: 0, skip: 0, pending: 0 };
+  state.entries.forEach(function(e){
+    if(e.status === "ok") n.ok++;
+    else if(e.status === "bad") n.bad++;
+    else if(e.status === "skip") n.skip++;
+    else n.pending++;
+  });
+  $("nTotal").textContent = n.total;
+  $("nOk").textContent = n.ok;
+  $("nBad").textContent = n.bad;
+  $("nSkip").textContent = n.skip;
+  document.querySelectorAll("[data-c]").forEach(function(el){
+    var k = el.dataset.c;
+    el.textContent = k === "all" ? n.total : String(n[k] || 0);
+  });
+}
+function statusDotClass(e){
+  if(e.status === "ok") return "d-ok";
+  if(e.status === "bad") return "d-bad";
+  if(e.status === "skip") return "d-skip";
+  if(e.status === "testing") return "d-testing";
+  return "";
+}
+function msText(e){
+  if(e.status === "ok") return e.ms ? e.ms + "ms" : "可达";
+  if(e.status === "bad") return e.ms ? e.ms + "ms" : "失败";
+  return "";
+}
+function passFilter(e){
+  if(state.filter !== "all" && e.status !== state.filter) return false;
+  if(!state.q) return true;
+  var q = state.q.toLowerCase();
+  if(e.name.toLowerCase().indexOf(q) >= 0) return true;
+  return e.urls.some(function(u){ return u.toLowerCase().indexOf(q) >= 0; });
+}
+function render(){
+  state.rows = {};
+  var shown = state.entries.filter(passFilter);
+  if(!shown.length){
+    groupsEl.innerHTML = '<div class="empty">该筛选条件下没有线路</div>';
+    return;
+  }
+  var grouped = groupBy(shown);
+  var order = state.groupOrder.filter(function(g){ return grouped[g]; });
+  var html = "";
+  order.forEach(function(g, gi){
+    var items = grouped[g];
+    var c = { ok: 0, bad: 0, skip: 0, pending: 0, testing: 0 };
+    items.forEach(function(e){ c[e.status] = (c[e.status] || 0) + 1; });
+    var meta = [];
+    if(c.ok) meta.push("有效 " + c.ok);
+    if(c.bad) meta.push("无效 " + c.bad);
+    if(c.skip) meta.push("跳过 " + c.skip);
+    if(c.testing) meta.push("检测中 " + c.testing);
+    if(c.pending) meta.push("待测 " + c.pending);
+    html += '<details class="grp"' + (gi < 3 ? " open" : "") + '><summary>' +
+      escapeHtml(g) + '<em>' + items.length + " 条 · " + escapeHtml(meta.join(" / ")) + "</em></summary>";
+    items.forEach(function(e){
+      html += '<div class="item" data-id="' + e.id + '">' +
+        '<span class="dot ' + statusDotClass(e) + '" data-dot></span>' +
+        '<div class="it-main"><div class="it-name" title="' + escapeHtml(e.name) + '">' +
+        escapeHtml(e.name) + '</div><div class="it-url" title="' + escapeHtml(e.urls[0] || "") + '">' +
+        escapeHtml(e.urls[0] || "（无地址）") + '</div>' +
+        (e.note ? '<div class="it-note">' + escapeHtml(e.note) + "</div>" : "") +
+        '</div><div class="it-ms" data-ms>' + msText(e) + "</div></div>";
+    });
+    html += "</details>";
+  });
+  groupsEl.innerHTML = html;
+  Array.prototype.forEach.call(groupsEl.querySelectorAll(".item"), function(el){
+    state.rows[el.dataset.id] = el;
+  });
+}
+function markRow(e){
+  var el = state.rows[e.id];
+  if(!el) return;
+  var dot = el.querySelector("[data-dot]");
+  if(dot) dot.className = "dot " + statusDotClass(e);
+  var ms = el.querySelector("[data-ms]");
+  if(ms) ms.textContent = msText(e);
+  var note = el.querySelector(".it-note");
+  if(note){
+    note.textContent = e.note || "";
+  } else if(e.note){
+    var main = el.querySelector(".it-main");
+    if(main){
+      var d = document.createElement("div");
+      d.className = "it-note";
+      d.textContent = e.note;
+      main.appendChild(d);
+    }
+  }
+}
+
+/* ---------------- 导出 ---------------- */
+function buildValid(mode){
+  var dedupe = $("optDedupe").checked;
+  var keepSkip = mode === "txt-skip";
+  var list = state.entries.filter(function(e){
+    if(e.status === "ok") return true;
+    if(keepSkip && e.status === "skip" && e.urls.length) return true;
+    return false;
+  });
+  var grouped = {};
+  var order = [];
+  list.forEach(function(e){
+    if(!grouped[e.group]){ grouped[e.group] = []; order.push(e.group); }
+    grouped[e.group].push(e);
+  });
+  var result = [];
+  order.forEach(function(g){
+    var arr = grouped[g].slice();
+    if(dedupe){
+      arr.sort(function(a, b){
+        var ra = a.status === "ok" ? 0 : 1, rb = b.status === "ok" ? 0 : 1;
+        if(ra !== rb) return ra - rb;
+        return (a.ms || 0) - (b.ms || 0);
+      });
+      var seen = {};
+      arr = arr.filter(function(e){
+        var k = e.name.toLowerCase();
+        if(seen[k]) return false;
+        seen[k] = true;
+        return true;
+      });
+    }
+    var names = {};
+    arr.forEach(function(e){ names[e.name] = (names[e.name] || 0) + 1; });
+    var used = {};
+    arr.forEach(function(e){
+      var name = e.name;
+      if(names[name] > 1){
+        used[name] = (used[name] || 0) + 1;
+        if(used[name] > 1) name = name + " " + used[name];
+      }
+      result.push({ group: g, name: name, url: e.urls[0], entry: e });
+    });
+  });
+  return result;
+}
+function stamp(){
+  var d = new Date();
+  var p = function(n){ return String(n).padStart(2, "0"); };
+  return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes());
+}
+function download(name, text, mime){
+  var blob = new Blob([text], { type: (mime || "text/plain") + ";charset=utf-8" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 3000);
+}
+function buildTxt(){
+  var rows = buildValid("txt");
+  if(!rows.length) return "";
+  var out = [];
+  var cur = null;
+  rows.forEach(function(r){
+    if(r.group !== cur){
+      if(cur !== null) out.push("");
+      out.push(r.group + ",#genre#");
+      cur = r.group;
+    }
+    out.push(r.name + "," + r.url);
+  });
+  return out.join("\n") + "\n";
+}
+function buildM3u(){
+  var rows = buildValid("txt");
+  var out = ["#EXTM3U"];
+  rows.forEach(function(r){
+    out.push('#EXTINF:-1 group-title="' + r.group.replace(/"/g, "'") + '",' + r.name);
+    out.push(r.url);
+  });
+  return out.join("\n") + "\n";
+}
+function buildReport(){
+  var lines = ["IPTV 直播源检测报告【修复版】", "生成时间：" + new Date().toLocaleString(), ""];
+  var ok = 0, bad = 0, skip = 0;
+  state.entries.forEach(function(e){
+    if(e.status === "ok") ok++;
+    else if(e.status === "bad") bad++;
+    else skip++;
+  });
+  lines.push("总线路：" + state.entries.length);
+  lines.push("有效：" + ok + "　无效：" + bad + "　无法检测：" + skip);
+  lines.push("并发：" + $("conc").value + "　超时：" + $("timeout").value + " ms");
+  lines.push("");
+  lines.push("分组统计：");
+  state.groupOrder.forEach(function(g){
+    var arr = state.entries.filter(function(e){ return e.group === g; });
+    var o = arr.filter(function(e){ return e.status === "ok"; }).length;
+    var b = arr.filter(function(e){ return e.status === "bad"; }).length;
+    var s = arr.filter(function(e){ return e.status === "skip"; }).length;
+    lines.push("  " + g + "：共 " + arr.length + "，有效 " + o + "，无效 " + b + "，无法检测 " + s);
+  });
+  lines.push("");
+  lines.push("明细（状态 / 耗时 / 名称 / 地址 / 说明）：");
+  state.entries.forEach(function(e){
+    var st = e.status === "ok" ? "有效" : e.status === "bad" ? "无效" : e.status === "skip" ? "跳过" : "待测";
+    lines.push([st, e.ms ? e.ms + "ms" : "-", e.name, e.urls[0] || "-", e.note || ""].join(" | "));
+  });
+  return lines.join("\n") + "\n";
+}
+
+/* ---------------- 事件 ---------------- */
+function readFile(f){
+  if(!f) return;
+  if(f.size > 12 * 1024 * 1024){ toast("文件过大（>12MB）"); return; }
+  var r = new FileReader();
+  r.onload = function(){ loadText(String(r.result), f.name); };
+  r.onerror = function(){ toast("读取失败"); };
+  r.readAsText(f, "utf-8");
+}
+dropEl.addEventListener("click", function(){ fileEl.click(); });
+fileEl.addEventListener("change", function(){ readFile(fileEl.files && fileEl.files[0]); });
+["dragenter", "dragover"].forEach(function(t){
+  dropEl.addEventListener(t, function(ev){ ev.preventDefault(); dropEl.classList.add("hover"); });
+});
+["dragleave", "drop"].forEach(function(t){
+  dropEl.addEventListener(t, function(ev){ ev.preventDefault(); dropEl.classList.remove("hover"); });
+});
+dropEl.addEventListener("drop", function(ev){
+  var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+  readFile(f);
+});
+$("btnPaste").addEventListener("click", function(){
+  loadText(pasteBox.value, "粘贴内容");
+});
+$("btnDemo").addEventListener("click", function(){
+  var demo = [
+    "🐯示例｜央视,#genre#",
+    "CCTV-1综合,https://www.baidu.com/",
+    "CCTV-2财经,https://www.qq.com/",
+    "CCTV-5体育http://www.bing.com/",
+    "CCTV-6电影,http://127.0.0.1:9/none.m3u8",
+    "",
+    "#EXTM3U",
+    "#EXTINF:-1 group-title=\"🐯示例｜卫视\",湖南卫视",
+    "https://www.sina.com.cn/",
+    "#EXTINF:-1,浙江卫视",
+    "rtmp://example.com/live/tv1",
+    "",
+    "🐯示例｜卫视,#genre#",
+    "东方卫视,mitv://example.com:9906/abc"
+  ].join("\n");
+  pasteBox.value = demo;
+  loadText(demo, "内置示例");
+});
+$("btnRun").addEventListener("click", startRun);
+$("btnStop").addEventListener("click", stopRun);
+$("btnReset").addEventListener("click", function(){
+  if(state.running) return;
+  state.entries.forEach(function(e){
+    if(!e.urls.length) return;
+    e.status = "pending"; e.ms = 0; e.level = ""; e.note = "";
+  });
+  render();
+  updateStats();
+  publishOrder();
+  $("barFill").style.width = "0%";
+  $("runStat").textContent = "0 / " + state.entries.filter(function(e){ return e.urls.length; }).length;
+  $("runLabel").textContent = "待检测";
+});
+Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(c){
+  c.addEventListener("click", function(){
+    Array.prototype.forEach.call(document.querySelectorAll(".chip"), function(x){ x.classList.remove("on"); });
+    c.classList.add("on");
+    state.filter = c.dataset.filter;
+    render();
+  });
+});
+var searchTimer = null;
+$("search").addEventListener("input", function(e){
+  clearTimeout(searchTimer);
+  var v = e.target.value.trim();
+  searchTimer = setTimeout(function(){
+    state.q = v;
+    render();
+  }, 180);
+});
+$("conc").addEventListener("input", function(){
+  var n = parseInt(this.value, 10);
+  if(n > 32) this.value = 32;
+  if(n < 1) this.value = 1;
+});
+$("timeout").addEventListener("input", function(){
+  var n = parseInt(this.value, 10);
+  if(n > 30000) this.value = 30000;
+  if(n < 1000) this.value = 1000;
+});
+$("btnTxt").addEventListener("click", function(){
+  if(state.running){ toast("请先等待检测结束"); return; }
+  var txt = buildTxt();
+  if(!txt){ toast("没有有效线路可导出"); return; }
+  download("iptv-valid-" + stamp() + ".txt", txt);
+  toast("已导出有效源 TXT");
+});
+$("btnM3u").addEventListener("click", function(){
+  if(state.running){ toast("请先等待检测结束"); return; }
+  var m3u = buildM3u();
+  if(m3u === "#EXTM3U\n"){ toast("没有有效线路可导出"); return; }
+  download("iptv-valid-" + stamp() + ".m3u", m3u, "audio/x-mpegurl");
+  toast("已导出 M3U");
+});
+$("btnReport").addEventListener("click", function(){
+  if(state.running){ toast("请先等待检测结束"); return; }
+  download("iptv-report-" + stamp() + ".txt", buildReport());
+  toast("已导出检测报告");
+});
+$("btnCopy").addEventListener("click", function(){
+  var txt = buildTxt();
+  if(!txt){ toast("没有有效线路可复制"); return; }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ toast("已复制到剪贴板"); }, function(){ toast("复制失败"); });
+  } else {
+    toast("当前环境不支持剪贴板");
+  }
+});
+})();
+</script>
+</body>
+</html>
